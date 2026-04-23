@@ -9143,6 +9143,19 @@ describe StripeMerchantAccountManager, :vcr do
           end.to have_enqueued_mail(ContactingCreatorMailer, :invalid_account_holder_name).with(user.id)
         end
       end
+
+      describe "Stripe account has blocked payments" do
+        before do
+          error_message = "Gumroad has blocked payments on this account. If you believe this is in error, please reach out to the platform for assistance."
+          expect(Stripe::Account).to receive(:update).and_raise(Stripe::InvalidRequestError.new(error_message, "account"))
+        end
+
+        it "returns :account_blocked without notifying Sentry" do
+          expect(ErrorNotifier).not_to receive(:notify)
+          result = subject.update_bank_account(user, passphrase: "1234")
+          expect(result).to eq(:account_blocked)
+        end
+      end
     end
 
     describe "all info provided previously, bank account not changed" do

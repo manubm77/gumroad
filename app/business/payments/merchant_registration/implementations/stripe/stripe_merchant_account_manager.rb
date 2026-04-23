@@ -283,6 +283,10 @@ module StripeMerchantAccountManager
       ContactingCreatorMailer.invalid_bank_account(user.id).deliver_later(queue: "critical")
       return :invalid_bank_account
     end
+    if e.message["blocked payments on this account"]
+      Rails.logger.info "Skipping bank sync for user #{user.id}: Stripe account has blocked payments"
+      return :account_blocked
+    end
 
     ErrorNotifier.notify(e)
     :stripe_invalid_request
