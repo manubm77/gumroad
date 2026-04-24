@@ -1275,6 +1275,14 @@ class Link < ApplicationRecord
       end
     end
 
+    def max_purchase_count_is_greater_than_or_equal_to_inventory_sold
+     return if max_purchase_count.blank?
+     return if sales_count_for_inventory.zero?
+     return if max_purchase_count >= sales_count_for_inventory
+
+     errors.add(:max_purchase_count, "cannot be less than the number of sales already made (#{sales_count_for_inventory})")
+   end
+
     def enforce_user_email_confirmation!
       return if user.confirmed?
 
