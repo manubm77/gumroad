@@ -104,6 +104,24 @@ describe CustomersController, :vcr, type: :controller, inertia: true do
       expect(customer_ids[response]).to match_array([purchases.third.external_id, purchases.fourth.external_id])
     end
 
+    it "excludes inactive subscription customers when filtering to active customers only" do
+      membership_product = create(:membership_product, user: seller)
+      active_purchase = create(:membership_purchase, link: membership_product, seller:)
+      cancelled_purchase = create(:membership_purchase, link: membership_product, seller:)
+      pending_cancellation_purchase = create(:membership_purchase, link: membership_product, seller:)
+      deactivated_purchase = create(:membership_purchase, link: membership_product, seller:)
+
+      cancelled_purchase.subscription.update!(cancelled_at: 1.day.ago)
+      pending_cancellation_purchase.subscription.update!(cancelled_at: 1.day.from_now)
+      deactivated_purchase.subscription.deactivate!
+      index_model_records(Purchase)
+
+      get :paged, params: { page: 1, products: [membership_product.external_id], active_customers_only: true }
+
+      expect(response).to be_successful
+      expect(response.parsed_body.deep_symbolize_keys[:customers].map { _1[:id] }).to eq([active_purchase.external_id])
+    end
+
     describe "minimum license uses filter" do
       before do
         purchases.first.license.update!(uses: 10)
